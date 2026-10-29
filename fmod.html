@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nextbots Automated API Uploader</title>
+    <!-- Bibliotecas de API via CDN: FMOD para áudio e JSZip para criar o pacote do Addon -->
+    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .app-box {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            max-width: 480px;
+            width: 100%;
+            border: 1px solid #333;
+        }
+        h1 {
+            text-align: center;
+            color: #00ffaa;
+            margin-top: 0;
+            font-size: 22px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .field {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        input[type="file"] {
+            padding: 6px;
+            cursor: pointer;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #00ffaa;
+            color: #0b0b0b;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #00cc88;
+        }
+        .status {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+            color: #00ffaa;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-box">
+    <h1>Nextbot API Auto-Packer</h1>
+    <form id="uploadForm">
+        <div class="field">
+            <label>Nome do Nextbot:</label>
+            <input type="text" id="botName" placeholder="Ex: MeuBotAssustador" required>
+        </div>
+        <div class="field">
+            <label>Sua Foto Enviada (PNG/JPG):</label>
+            <input type="file" id="botImg" accept="image/*" required>
+        </div>
+        <div class="field">
+            <label>Som de Perseguição (.mp3/.wav):</label>
+            <input type="file" id="botSound" accept="audio/*" required>
+        </div>
+        <button type="submit" id="btnPack">Compilar e Baixar Addon completo</button>
+    </form>
+    <div class="status" id="statusMsg">A processar ficheiros e a injetar código Lua...</div>
+</div>
+
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btnPack');
+        const status = document.getElementById('statusMsg');
+        const rawName = document.getElementById('botName').value.trim();
+        // Normaliza o nome para o padrão do GMod (letras minúsculas e sem espaços)
+        const botID = rawName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        
+        const imgFile = document.getElementById('botImg').files[0];
+        const sndFile = document.getElementById('botSound').files[0];
+
+        btn.disabled = true;
+        status.style.display = 'block';
+
+        // Inicializa a API do gerador de ZIP
+        const zip = new JSZip();
+
+        // 1. Injeta os metadados do Addon (addon.json obrigatório no GMod)
+        const addonJson = {
+            "title": rawName,
+            "type": "NPC",
+            "tags": ["fun", "scenic"],
+            "ignore": []
+        };
+        zip.file("addon.json", JSON.stringify(addonJson, null, 4));
+
+        // 2. Cria e injeta o código da Inteligência Artificial em Lua (shared.lua)
+        const luaCode = `
+AddCSLuaFile()
+ENT.Base = "base_nextbot"
+ENT.Type = "nextbot"
+ENT.Spawnable = true
+ENT.PrintName = "${rawName}"
+
+function ENT:Initialize()
+    self:SetModel("models/props_junk/wood_crate001a.mdl")
+    self:SetNoDraw(true)
+    if SERVER then
+        self:SetHealth(100)
+    end
+end
+
+function ENT:RunBehaviour()
+    while (true) do
+        local targets = player.GetAll()
+        if #targets > 0 then
+            self:MoveToPos(targets[1]:GetPos())
+        end
+        coroutine.yield()
+    end
+end
+        `;
+        zip.file(`lua/entities/${botID}.lua`, luaCode);
+
+        // 3. Processa e converte os teus ficheiros de Média através da FileReader API
+        const readFileAsArrayBuffer = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        };
+
+        try {
+            const imgData = await readFileAsArrayBuffer(imgFile);
+            const sndData = await readFileAsArrayBuffer(sndFile);
+
+            // Adiciona a imagem e o som diretamente nas rotas corretas do Addon
+            zip.file(`materials/entities/${botID}.png`, imgData);
+            zip.file(`sound/nextbot_${botID}/chase.mp3`, sndData);
+
+            // 4. Compila tudo num ficheiro .ZIP para download imediato
+            const content = await zip.generateAsync({type: "blob"});
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = `addon_nextbot_${botID}.zip`;
+            link.click();
+
+            status.innerText = "Sucesso! Ficheiro ZIP descarregado.";
+        } catch (err) {
+            alert("Erro ao processar ficheiros via API: " + err);
+            status.innerText = "Falha na geração.";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
