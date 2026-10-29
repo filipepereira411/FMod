@@ -3,196 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nextbots Automated API Uploader</title>
-    <!-- Bibliotecas de API via CDN: FMOD para áudio e JSZip para criar o pacote do Addon -->
-    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
-    <script src="https://cloudflare.com" crossorigin="anonymous"></script>
+    <title>FMOD - Filipe's Mod (Official Sandbox)</title>
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
-        }
-        .app-box {
-            background-color: #1e1e1e;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-            max-width: 480px;
-            width: 100%;
-            border: 1px solid #333;
-        }
-        h1 {
-            text-align: center;
-            color: #00ffaa;
-            margin-top: 0;
-            font-size: 22px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .field {
-            margin-bottom: 18px;
-        }
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            color: #aaa;
-        }
-        input[type="text"], input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            background: #2a2a2a;
-            border: 1px solid #444;
+            padding: 0;
+            background-color: #050505;
             color: #fff;
-            border-radius: 6px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Logótipo do FMOD (Inspirado no GMod do Filipe) */
+        .fmod-logo {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #0074e4;
+            color: #fff;
+            border-radius: 8px;
+            font-family: 'Arial Black', Gadget, sans-serif;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 36px;
+            text-transform: lowercase;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2);
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        /* Q-Menu Estilo Garry's Mod (FMOD Spawn Menu) */
+        #qMenu {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            width: 90%;
+            height: 90%;
+            background: rgba(30, 40, 50, 0.95);
+            border: 3px solid #0074e4;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .menu-header {
+            background: #1a2530;
+            padding: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            border-bottom: 2px solid #0074e4;
+            letter-spacing: 1px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+        }
+        .menu-content {
+            display: flex;
+            height: calc(100% - 72px);
+        }
+        .menu-sidebar {
+            width: 250px;
+            background: #141c24;
+            border-right: 2px solid #1a2530;
+            padding: 15px;
             box-sizing: border-box;
         }
-        input[type="file"] {
-            padding: 6px;
-            cursor: pointer;
+        .menu-main {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            align-content: start;
         }
-        button {
-            width: 100%;
-            padding: 14px;
-            background-color: #00ffaa;
-            color: #0b0b0b;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s ease-in-out;
-        }
-        button:hover {
-            background-color: #00cc88;
-        }
-        .status {
-            margin-top: 15px;
+        .spawn-card {
+            background: #1a2530;
+            border: 1px solid #0074e4;
+            border-radius: 4px;
+            padding: 10px;
             text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .spawn-card:hover {
+            background: #253545;
+            transform: scale(1.05);
+        }
+        .spawn-card img {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .spawn-card span { font-size: 12px; display: block; }
+
+        /* Interface HUD de Jogo (GMod Style) */
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #0074e4;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 24px;
+            letter-spacing: 1px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .hud-bar { display: inline-block; margin-right: 20px; }
+        #hp { color: #ff3333; }
+        #suit { color: #ffaa00; }
+
+        /* Notificações no Canto Superior Direito */
+        #notifications {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .noti {
+            background: rgba(20, 30, 40, 0.9);
+            border-left: 5px solid #0074e4;
+            padding: 10px 20px;
+            border-radius: 0 4px 4px 0;
+            font-size: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            animation: slideIn 0.2s ease-out;
+        }
+
+        /* Instruções de Ferramentas */
+        #toolHUD {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 4px;
             font-size: 13px;
-            color: #00ffaa;
-            display: none;
+            color: #ccc;
+            pointer-events: none;
+        }
+
+        #gameCanvas { display: block; background: #131920; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
 <body>
 
-<div class="app-box">
-    <h1>Nextbot API Auto-Packer</h1>
-    <form id="uploadForm">
-        <div class="field">
-            <label>Nome do Nextbot:</label>
-            <input type="text" id="botName" placeholder="Ex: MeuBotAssustador" required>
-        </div>
-        <div class="field">
-            <label>Sua Foto Enviada (PNG/JPG):</label>
-            <input type="file" id="botImg" accept="image/*" required>
-        </div>
-        <div class="field">
-            <label>Som de Perseguição (.mp3/.wav):</label>
-            <input type="file" id="botSound" accept="audio/*" required>
-        </div>
-        <button type="submit" id="btnPack">Compilar e Baixar Addon completo</button>
-    </form>
-    <div class="status" id="statusMsg">A processar ficheiros e a injetar código Lua...</div>
+<div id="toolHUD">
+    <div class="fmod-logo" style="width:24px; height:24px; font-size:18px; line-height:22px; border-radius:4px; margin-right:5px;">f</div>
+    <strong>FMOD TOOLGUN ACTIVE</strong><br>
+    [Mantenha Q] Abrir Menu de Spawn<br>
+    [Clique Esquerdo] Spawn do Objeto Selecionado<br>
+    [W, A, S, D] Mover o Filipe (Círculo Azul)
 </div>
 
+<div id="notifications"></div>
+
+<div id="hud">
+    <span class="hud-bar">HEALTH: <span id="hp">100</span></span>
+    <span class="hud-bar">SUIT: <span id="suit">100</span></span>
+</div>
+
+<!-- FMOD Q-MENU -->
+<div id="qMenu">
+    <div class="menu-header">
+        <div class="fmod-logo">f</div>
+        FILIPE'S MOD - SPAWN MENU
+    </div>
+    <div class="menu-content">
+        <div class="menu-sidebar">
+            <h3 style="color:#0074e4; margin-top:0;">Filtros de Spawn</h3>
+            <p style="font-size:12px; color:#aaa;">Escolha o objeto abaixo e feche o menu (solte o Q) para fazer o spawn com o clique do rato no mapa.</p>
+            <hr style="border: 1px solid #1a2530;">
+            <label style="font-size: 12px;">Carregar Som (.mp3):</label>
+            <input type="file" id="customSound" accept="audio/*" style="width:100%; margin-top:5px; color:#fff;">
+        </div>
+        <div class="menu-main" id="spawnList">
+            <!-- Os cards de spawn serão gerados dinamicamente via JS -->
+        </div>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
 <script>
-    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const btn = document.getElementById('btnPack');
-        const status = document.getElementById('statusMsg');
-        const rawName = document.getElementById('botName').value.trim();
-        // Normaliza o nome para o padrão do GMod (letras minúsculas e sem espaços)
-        const botID = rawName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        
-        const imgFile = document.getElementById('botImg').files[0];
-        const sndFile = document.getElementById('botSound').files[0];
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
 
-        btn.disabled = true;
-        status.style.display = 'block';
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-        // Inicializa a API do gerador de ZIP
-        const zip = new JSZip();
+    // Sistema de Áudio Nativo do FMOD
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioContext = new AudioCtx();
+    let customAudioBuffer = null;
 
-        // 1. Injeta os metadados do Addon (addon.json obrigatório no GMod)
-        const addonJson = {
-            "title": rawName,
-            "type": "NPC",
-            "tags": ["fun", "scenic"],
-            "ignore": []
-        };
-        zip.file("addon.json", JSON.stringify(addonJson, null, 4));
+    // Estado Geral do FMOD
+    const player = { x: window.innerWidth/2, y: window.innerHeight/2, size: 16, speed: 5 };
+    const props = [];
+    const keys = {};
+    let currentSpawnSelection = 'nextbot_sanic';
 
-        // 2. Cria e injeta o código da Inteligência Artificial em Lua (shared.lua)
-        const luaCode = `
-AddCSLuaFile()
-ENT.Base = "base_nextbot"
-ENT.Type = "nextbot"
-ENT.Spawnable = true
-ENT.PrintName = "${rawName}"
+    // Catálogo de Props/Entidades do Filipe's Mod
+    const spawnRegistry = {
+        'nextbot_sanic': { name: 'Sanic (Nextbot)', type: 'nextbot', color: '#ff3333', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><circle cx="25" cy="25" r="20" fill="red"/><text x="18" y="32" fill="white" font-weight="bold">S</text></svg>' },
+        'nextbot_saul': { name: 'Saul Goodman', type: 'nextbot', color: '#ffaa00', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><circle cx="25" cy="25" r="20" fill="orange"/><text x="18" y="32" fill="white" font-weight="bold">SG</text></svg>' },
+        'prop_crate': { name: 'Caixa de Madeira', type: 'prop', color: '#8b5a2b', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><rect x="5" y="5" width="40" height="40" fill="brown" stroke="black"/></svg>' },
+        'prop_barrel': { name: 'Barril Explosivo', type: 'prop', color: '#cc0000', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><rect x="10" y="5" width="30" height="40" fill="red" rx="5"/></svg>' }
+    };
 
-function ENT:Initialize()
-    self:SetModel("models/props_junk/wood_crate001a.mdl")
-    self:SetNoDraw(true)
-    if SERVER then
-        self:SetHealth(100)
-    end
-end
-
-function ENT:RunBehaviour()
-    while (true) do
-        local targets = player.GetAll()
-        if #targets > 0 then
-            self:MoveToPos(targets[1]:GetPos())
-        end
-        coroutine.yield()
-    end
-end
-        `;
-        zip.file(`lua/entities/${botID}.lua`, luaCode);
-
-        // 3. Processa e converte os teus ficheiros de Média através da FileReader API
-        const readFileAsArrayBuffer = (file) => {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(reader.error);
-                reader.readAsArrayBuffer(file);
-            });
+    // Montar a Interface do Q-Menu
+    const spawnListDiv = document.getElementById('spawnList');
+    for (let id in spawnRegistry) {
+        const item = spawnRegistry[id];
+        const card = document.createElement('div');
+        card.className = 'spawn-card';
+        card.onclick = () => {
+            currentSpawnSelection = id;
+            showNotification(`Ferramenta configurada para: ${item.name}`);
         };
 
-        try {
-            const imgData = await readFileAsArrayBuffer(imgFile);
-            const sndData = await readFileAsArrayBuffer(sndFile);
+        const img = document.createElement('img');
+        img.src = item.img;
+        const span = document.createElement('span');
+        span.innerText = item.name;
 
-            // Adiciona a imagem e o som diretamente nas rotas corretas do Addon
-            zip.file(`materials/entities/${botID}.png`, imgData);
-            zip.file(`sound/nextbot_${botID}/chase.mp3`, sndData);
+        card.appendChild(img);
+        card.appendChild(span);
+        spawnListDiv.appendChild(card);
+    }
 
-            // 4. Compila tudo num ficheiro .ZIP para download imediato
-            const content = await zip.generateAsync({type: "blob"});
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(content);
-            link.download = `addon_nextbot_${botID}.zip`;
-            link.click();
+    // Gestor de Notificações do FMOD
+    function showNotification(text) {
+        const container = document.getElementById('notifications');
+        const noti = document.createElement('div');
+        noti.className = 'noti';
+        noti.innerText = text;
+        container.appendChild(noti);
+        setTimeout(() => noti.remove(), 3000);
+    }
 
-            status.innerText = "Sucesso! Ficheiro ZIP descarregado.";
-        } catch (err) {
-            alert("Erro ao processar ficheiros via API: " + err);
-            status.innerText = "Falha na geração.";
-        } finally {
-            btn.disabled = false;
+    // Controlos do Teclado (Abrir Menu com Q)
+    window.addEventListener('keydown', e => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.key.toLowerCase() === 'q') {
+            document.getElementById('qMenu').style.display = 'block';
         }
     });
-</script>
+    window.addEventListener('keyup', e => {
+        keys[e.key.toLowerCase()] = false;
+        if (e.key.toLowerCase() === 'q') {
+            document.getElementById('qMenu').style.display = 'none';
+        }
+    });
 
-</body>
-</html>
+    // Evento de Spawn com Clique do Rato (Toolgun Click)
+    canvas.addEventListener('mousedown', e => {
+        if (document.getElementById('qMenu').style.display === 'block') return;
+        if (audioContext.state === 'suspended') audioContext.resume();
+
