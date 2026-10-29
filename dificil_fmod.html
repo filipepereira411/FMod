@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMOD - Filipe's Mod HARDCORE EDITION</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #020202;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Logótipo do FMOD */
+        .fmod-logo {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #d62828;
+            color: #fff;
+            border-radius: 8px;
+            font-family: 'Arial Black', Gadget, sans-serif;
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 36px;
+            text-transform: lowercase;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.4);
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        /* Q-Menu Estilo GMod */
+        #qMenu {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            width: 90%;
+            height: 90%;
+            background: rgba(20, 20, 25, 0.98);
+            border: 3px solid #d62828;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 0 40px rgba(214, 40, 40, 0.3);
+        }
+        .menu-header {
+            background: #1a1a1f;
+            padding: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            border-bottom: 2px solid #d62828;
+            letter-spacing: 1px;
+            color: #ff4d4d;
+            display: flex;
+            align-items: center;
+        }
+        .menu-content {
+            display: flex;
+            height: calc(100% - 72px);
+        }
+        .menu-sidebar {
+            width: 260px;
+            background: #111115;
+            border-right: 2px solid #1a1a1f;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .menu-main {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            align-content: start;
+        }
+        .spawn-card {
+            background: #1a1a1f;
+            border: 1px solid #d62828;
+            border-radius: 4px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .spawn-card:hover {
+            background: #2d1a1a;
+            transform: scale(1.05);
+        }
+        .spawn-card img {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .spawn-card span { font-size: 12px; display: block; }
+
+        /* Interface HUD */
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #d62828;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 24px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #hp { color: #ff3333; }
+
+        #gameCanvas { display: block; background: #0b0c10; }
+
+        /* --- TELA DE ERRO CRÍTICO / TRAVAMENTO (FAKE SYSTEM CRASH) --- */
+        #systemCrashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0046c7; /* Cor clássica da BSOD do Windows */
+            color: #fff;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 10% 15%;
+            box-sizing: border-box;
+            display: none;
+            z-index: 10000;
+            font-size: 20px;
+            line-height: 1.6;
+        }
+        #systemCrashScreen h1 { font-size: 90px; margin: 0 0 20px 0; }
+        
+        /* Terminal para Desligar com Dificuldade */
+        #biosShutdownConsole {
+            background: #000;
+            border: 2px solid #ff3333;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            margin-top: 30px;
+            max-width: 600px;
+            border-radius: 4px;
+            display: none;
+        }
+        #biosShutdownConsole input {
+            background: transparent;
+            border: none;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            width: 70%;
+            outline: none;
+        }
+
+        #toolHUD {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #ccc;
+            border-left: 3px solid #ff3333;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="toolHUD">
+    <strong style="color: #ff3333;">FMOD HARDCORE MODE ACTIVE</strong><br>
+    [Mantenha Q] Abrir Menu de Spawn<br>
+    [Clique Esquerdo] Spawn / Invocação de Entidades<br>
+    [W, A, S, D] Controlo do Filipe (Círculo Azul)<br>
+    <span style="color: #ffcc00;">Aviso: Próximo Nextbot irá tentar infetar o teclado!</span>
+</div>
+
+<div id="hud">
+    <span>SYSTEM INTEGRITY: <span id="hp">100</span>%</span>
+</div>
+
+<!-- FMOD Q-MENU -->
+<div id="qMenu">
+    <div class="menu-header">
+        <div class="fmod-logo">f</div>
+        FILIPE'S MOD - MODO INSTÁVEL
+    </div>
+    <div class="menu-content">
+        <div class="menu-sidebar">
+            <h3 style="color:#ff3333; margin-top:0;">Filtros Extremos</h3>
+            <p style="font-size:11px; color:#aaa;">Cuidado ao spawnar a entidade corrompida. Ela bloqueará as inputs do teclado e exigirá bypass manual.</p>
+        </div>
+        <div class="menu-main" id="spawnList">
+            <!-- Gerado dinamicamente -->
+        </div>
+    </div>
+</div>
+
+<!-- TELA FAKE DE LOCK/DESLIGAR PC -->
+<div id="systemCrashScreen">
+    <h1>:(</h1>
+    <h2>O FMOD (Filipe's Mod) detetou uma corrupção fatal no buffer do Teclado.</h2>
+    <p>O input de W, A, S, D foi congelado para proteger o kernel do Filipe. O sistema operacional simulado entrou em colapso devido à velocidade do Nextbot.</p>
+    <p>Código do erro: NEXTBOT_KEYBOARD_INJECTION_FAILURE</p>
+    
+    <div id="biosShutdownConsole">
+        <div style="color: #ff3333; font-weight: bold; margin-bottom: 10px;">[FMOD HARDWARE KERNEL INTERRUPT]</div>
+        <div id="terminalLog">Para forçar o encerramento do PC, digite a sequência de segurança abaixo:<br><br><span style="color:#ffcc00;">Etapa 1 de 3: Digite "override_fmod_shutdown"</span></div>
+        <br>
+        <span>FMOD:\> </span><input type="text" id="consoleInput" autocomplete="off" autofocus>
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Estado do Jogo
+    const player = { x: window.innerWidth/2, y: window.innerHeight/2, size: 16, speed: 5 };
+    const props = [];
+    const keys = {};
+    let keyboardLocked = false; // Flag que TRAVA o teclado
+    let currentSpawnSelection = 'nextbot_glitch';
+    let shutdownStep = 1;
+
+    const spawnRegistry = {
+        'nextbot_glitch': { name: 'FATAL_ERROR.EXE', type: 'nextbot', color: '#ff0055', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><rect width="50" height="50" fill="black"/><text x="10" y="30" fill="red" font-weight="bold">ERR</text></svg>' },
+        'prop_glitched_box': { name: 'Caixa Corrompida', type: 'prop', color: '#441111', img: 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" width="50" height="50"><rect x="5" y="5" width="40" height="40" fill="%23220000" stroke="red"/></svg>' }
+    };
+
+    // Montar Q-Menu
+    const spawnListDiv = document.getElementById('spawnList');
+    for (let id in spawnRegistry) {
+        const item = spawnRegistry[id];
+        const card = document.createElement('div');
+        card.className = 'spawn-card';
+        card.onclick = () => currentSpawnSelection = id;
+
+        const img = document.createElement('img');
+        img.src = item.img;
+        const span = document.createElement('span');
+        span.innerText = item.name;
+
+        card.appendChild(img);
+        card.appendChild(span);
+        spawnListDiv.appendChild(card);
+    }
+
+    // Monitor do Teclado (Com capacidade de travamento por software)
+    window.addEventListener('keydown', e => {
+        if (keyboardLocked) {
+            // Trava o teclado: impede qualquer movimento do jogador ou atalho
+            e.preventDefault();
+            return;
+        }
+        keys[e.key.toLowerCase()] = true;
+        if (e.key.toLowerCase() === 'q') document.getElementById('qMenu').style.display = 'block';
+    });
+
+    window.addEventListener('keyup', e => {
+        if (keyboardLocked) return;
+        keys[e.key.toLowerCase()] = false;
+        if (e.key.toLowerCase() === 'q') document.getElementById('qMenu').style.display = 'none';
+    });
+
+    // Invocação de Entidades
+    canvas.addEventListener('mousedown', e => {
+        if (document.getElementById('qMenu').style.display === 'block' || keyboardLocked) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mX = e.clientX - rect.left;
+        const mY = e.clientY - rect.top;
+        const meta = spawnRegistry[currentSpawnSelection];
+
+        props.push({
+            x: mX,
+            y: mY,
+            type: meta.type,
